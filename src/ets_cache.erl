@@ -210,12 +210,13 @@ match_object(Name, Key, Return) ->
 	[{_,_,_}]=Objs ->
 	    delete_if_expired_in_list(Name, Objs),
 	    lists:flatmap(fun({Key1, Val1, _}) ->
-			{Key1, Val1}
+			[{Key1, Val1}]
 			end, Objs);
 	[] when is_function(Return) ->
 	    Ver = get_counter(Name),
 	    case case Return() of
-		     {ok, _} = Ret -> {cache, Ret};
+			 {ok, Ret} when Ret == [] -> {nocache, Ret};
+		     {ok, Ret} -> {cache, Ret};
 		     error -> {nocache, error};
 		     {error, notfound} -> {nocache, error};
 		     {cache, _} = Ret -> Ret;
@@ -231,7 +232,7 @@ match_object(Name, Key, Return) ->
 			    Time = calculate_time(Name, Timeout),
 			    do_insert_in_list(new, Name
 								, lists:flatmap(fun({Key1, Val1}) ->
-									{Key1, Val1, Time}
+									[{Key1, Val1, Time}]
 								end, Vals));
 			_ ->
 			    ok
@@ -243,7 +244,7 @@ match_object(Name, Key, Return) ->
 				Time = current_time(),
 			    do_insert_in_list(new, Name
 								, lists:flatmap(fun({Key1, Val1}) ->
-									{Key1, Val1, Time}
+									[{Key1, Val1, Time}]
 								end, Vals));
 			_ ->
 			    ok
@@ -273,28 +274,28 @@ update(Name, Key, Val, UpdateFun, Nodes) ->
 			 true
 		 end,
     if NeedUpdate ->
-	    case case UpdateFun() of
-		     ok -> {cache, Val};
-		     {ok, _} = Ret -> {cache, Ret};
-		     error -> {cache, error};
-		     {error, notfound} -> {cache, error};
-		     {cache, _} = Ret -> Ret;
-		     {nocache, _} = Ret -> Ret;
-		     Other -> {nocache, Other}
-		 end of
+		case case UpdateFun() of
+				ok -> {cache, Val};
+				{ok, _} = Ret -> {cache, Ret};
+				error -> {nocache, error};
+				{error, notfound} -> {nocache, error};
+				{cache, _} = Ret -> Ret;
+				{nocache, _} = Ret -> Ret;
+				Other -> {nocache, Other}
+			end of
 		{nocache, NewVal} ->
-		    NewVal;
+			NewVal;
 		{cache, NewVal} ->
-		    lists:foreach(
-		      fun(Node) when Node /= node() ->
-			      send({Name, Node}, {delete, Key});
-			 (_) ->
-			      do_insert(replace, Name, {Key, NewVal, current_time()})
-		      end, Nodes),
-		    NewVal
-	    end;
-       true ->
-	    Val
+			lists:foreach(
+				fun(Node) when Node /= node() ->
+					send({Name, Node}, {delete, Key});
+				(_) ->
+					do_insert(replace, Name, {Key, NewVal, current_time()})
+				end, Nodes),
+			NewVal
+		end;
+	true ->
+		Val
     end.
 
 -spec incr(atom(), any(), non_neg_integer()) -> ok.
