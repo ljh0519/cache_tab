@@ -207,7 +207,7 @@ match_object(Name, Key) ->
 -spec match_object(atom(), any(), term()) -> {ok, any()} | any().
 match_object(Name, Key, Return) ->
     try ets:match_object(Name, {Key, '_', '_'}) of
-	[{_,_,_}]=Objs ->
+	[_ | _]=Objs ->
 	    delete_if_expired_in_list(Name, Objs),
 	    lists:flatmap(fun({Key1, Val1, _}) ->
 			[{Key1, Val1}]
@@ -240,23 +240,23 @@ match_object(Name, Key, Return) ->
 		    Vals;
 		{cache, Vals} ->
 		    case get_counter(Name) of
-			Ver ->
-				Time = current_time(),
-			    do_insert_in_list(new, Name
-								, lists:flatmap(fun({Key1, Val1}) ->
-									[{Key1, Val1, Time}]
-								end, Vals));
-			_ ->
-			    ok
+				Ver ->
+					Time = current_time(),
+					do_insert_in_list(new, Name
+									, lists:flatmap(fun({Key1, Val1}) ->
+										[{Key1, Val1, Time}]
+									end, Vals));
+				_ ->
+					ok
 		    end,
 		    Vals
 	    end;
 	[] ->
 	    Return
     catch _:badarg when is_function(Return) ->
-	    untag(Return());
-	  _:badarg ->
-	    Return
+			untag(Return());
+		_:badarg ->
+			Return
     end.
 
 -spec update(atom(), any(), {ok, any()} | error, update_fun()) -> ok | any().
