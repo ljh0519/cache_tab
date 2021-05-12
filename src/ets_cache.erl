@@ -215,7 +215,7 @@ match_object(Name, Key, Return) ->
 	[] when is_function(Return) ->
 	    Ver = get_counter(Name),
 	    case case Return() of
-			 {ok, Ret} when Ret == [] -> {nocache, Ret};
+			 {ok, []} -> {nocache, []};
 		     {ok, Ret} -> {cache, Ret};
 		     error -> {nocache, error};
 		     {error, notfound} -> {nocache, error};
@@ -232,7 +232,7 @@ match_object(Name, Key, Return) ->
 			    Time = calculate_time(Name, Timeout),
 			    do_insert_in_list(new, Name
 								, lists:flatmap(fun({Key1, Val1}) ->
-									[{Key1, Val1, Time}]
+									[{Key1, {ok, Val1}, Time}]
 								end, Vals));
 			_ ->
 			    ok
@@ -244,7 +244,7 @@ match_object(Name, Key, Return) ->
 					Time = current_time(),
 					do_insert_in_list(new, Name
 									, lists:flatmap(fun({Key1, Val1}) ->
-										[{Key1, Val1, Time}]
+										[{Key1, {ok, Val1}, Time}]
 									end, Vals));
 				_ ->
 					ok
